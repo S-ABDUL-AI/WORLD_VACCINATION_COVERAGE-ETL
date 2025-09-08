@@ -1,3 +1,7 @@
+# 📊 World Vaccination Coverage ETL & Dashboard
+
+[![Refresh Vaccination Database](https://github.com/S-ABDUL-AI/World_Vaccination_Coverage-ETL/actions/workflows/refresh_vaccination_db.yml/badge.svg)](https://github.com/S-ABDUL-AI/World_Vaccination_Coverage-ETL/actions/workflows/refresh_vaccination_db.yml)
+
 
 # 🌍 World Vaccination Coverage — ETL & Dashboard
 
