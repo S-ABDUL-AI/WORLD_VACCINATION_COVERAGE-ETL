@@ -1,0 +1,31 @@
+# --- Data & artifacts (generated) ---
+vaccination.db
+*.sqlite
+*.db
+*.db-journal
+owid_vaccination_coverage.csv
+OWID*.csv
+clean_*.csv
+plot_*.png
+
+# --- Python cache/venv ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+.env.*
+*.egg-info/
+
+# --- Streamlit ---
+.streamlit/
+.secrets.toml
+
+# --- OS/editor noise ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
