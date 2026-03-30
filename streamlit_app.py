@@ -52,23 +52,6 @@ def mean_ci(data, confidence=0.95):
     return mean - h, mean + h
 
 
-def ensure_database():
-    """Run ETL once if DB missing or user forces refresh."""
-    if "etl_ok" not in st.session_state:
-        st.session_state.etl_ok = False
-    if not os.path.exists(DB_PATH):
-        with st.spinner("Downloading OWID data and building SQLite database (first run)…"):
-            try:
-                run_etl()
-                st.session_state.etl_ok = True
-            except Exception as e:
-                st.error(f"ETL failed: {e}")
-                st.info("Check network access to Our World in Data and try **Refresh data** in the sidebar.")
-                st.stop()
-
-
-ensure_database()
-
 st.title("💉 World Vaccination Coverage")
 st.caption(
     "ETL from OWID global coverage data — explore trends, compare before/after a campaign year, "
@@ -96,6 +79,25 @@ st.sidebar.caption(
     "Data: [Our World in Data — vaccination coverage](https://ourworldindata.org/vaccination). "
     "This dashboard is for analysis and education, not clinical or policy decisions."
 )
+
+# Bootstrap DB only on demand.
+# Streamlit Cloud can time out during cold starts if we download & build at import time.
+if not os.path.exists(DB_PATH):
+    st.warning(
+        "Database not initialized in this environment yet.\n\n"
+        "Click **Initialize database** to download OWID data and build the local SQLite DB.\n"
+        "(This can take a few minutes.)"
+    )
+    if st.button("Initialize database", type="primary"):
+        with st.spinner("Downloading OWID data and building SQLite database…"):
+            try:
+                run_etl()
+                st.success("Database initialized ✅")
+                st.rerun()
+            except Exception as e:
+                st.error(f"ETL failed: {e}")
+                st.info("If this keeps failing, redeploy the app and try again. Network access may be restricted.")
+    st.stop()
 
 # Load metadata
 try:
