@@ -53,14 +53,25 @@ def run_etl():
     df = pd.read_csv(io.BytesIO(resp.content))
 
     print("🔹 Transform: tidying dataset …")
+    lower_to_actual = {c.lower(): c for c in df.columns}
+    entity_col = lower_to_actual.get("entity")
+    year_col = lower_to_actual.get("year")
+    if not entity_col or not year_col:
+        raise ValueError(
+            f"OWID schema changed: expected entity/year columns, got {list(df.columns)[:15]}"
+        )
+
     coverage_cols = [c for c in df.columns if c.startswith("coverage__")]
+    if not coverage_cols:
+        raise ValueError("No coverage__* columns found in OWID CSV.")
+
     df_tidy = df.melt(
-        id_vars=["Entity", "Year"],
+        id_vars=[entity_col, year_col],
         value_vars=coverage_cols,
         var_name="antigen",
         value_name="coverage_pct",
     ).dropna()
-    df_tidy = df_tidy.rename(columns={"Entity": "country", "Year": "year"})
+    df_tidy = df_tidy.rename(columns={entity_col: "country", year_col: "year"})
     df_tidy = df_tidy[df_tidy["year"].between(1980, 2100)]
 
     print("🔹 Load: writing to SQLite …")
