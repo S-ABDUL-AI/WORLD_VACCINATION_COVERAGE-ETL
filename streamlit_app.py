@@ -20,7 +20,7 @@ st.set_page_config(
 
 _TRUST_CSS = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     html, body, [class*="css"]  {
         font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
     }
@@ -28,6 +28,33 @@ _TRUST_CSS = """
     div[data-testid="stMetricValue"] { font-size: 1.45rem; font-weight: 600; color: #253858; }
     h1 { color: #0052CC !important; font-weight: 700 !important; }
     h2, h3 { color: #253858 !important; }
+    .wv-kpi-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; }
+    .wv-kpi-card {
+        flex: 1 1 200px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 10px;
+        padding: 16px 18px;
+        box-shadow: 0 1px 3px rgba(37,56,88,0.08);
+        border: 1px solid #e2e8f0;
+        border-left-width: 5px;
+        border-left-style: solid;
+        min-height: 108px;
+    }
+    .wv-kpi-label { color: #64748b; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+    .wv-kpi-value { color: #253858; font-size: 1.45rem; font-weight: 700; line-height: 1.2; margin-top: 6px; }
+    .wv-kpi-sub { color: #475569; font-size: 0.86rem; margin-top: 8px; line-height: 1.35; }
+    .wv-insight-box {
+        border-radius: 12px;
+        padding: 20px 22px;
+        margin: 18px 0 10px 0;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-left-width: 5px;
+        border-left-style: solid;
+    }
+    .wv-insight-kicker { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+    .wv-insight-lead { color: #253858; font-size: 1.2rem; font-weight: 800; line-height: 1.35; margin: 10px 0 12px 0; }
+    .wv-insight-body { color: #334155; font-size: 0.98rem; line-height: 1.55; }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -35,6 +62,21 @@ _TRUST_CSS = """
 </style>
 """
 st.markdown(_TRUST_CSS, unsafe_allow_html=True)
+
+COL_BEFORE = "#64748b"
+COL_AFTER = "#0052CC"
+COL_WIN = "#0d9488"
+COL_CAUTION = "#d97706"
+COL_NEUTRAL = "#475569"
+
+
+def _kpi_card_html(label: str, value: str, sub: str, accent: str) -> str:
+    return (
+        f'<div class="wv-kpi-card" style="border-left-color:{accent};">'
+        f'<div class="wv-kpi-label">{label}</div>'
+        f'<div class="wv-kpi-value">{value}</div>'
+        f'<div class="wv-kpi-sub">{sub}</div></div>'
+    )
 
 
 def country_to_flag(country_name: str) -> str:
@@ -142,6 +184,7 @@ if df_meta.empty:
 
 countries = sorted(df_meta["country"].unique())
 default_idx = countries.index("India") if "India" in countries else 0
+st.sidebar.header("Geography & program")
 country = st.sidebar.selectbox("Country", countries, index=default_idx)
 
 antigens = sorted(df_meta[df_meta["country"] == country]["antigen"].unique())
@@ -159,15 +202,39 @@ yr_min, yr_max = int(series["year"].min()), int(series["year"].max())
 delta = latest - earliest
 n_obs = len(series)
 
-# --- Top KPI row ---
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Years covered", f"{yr_min}–{yr_max}", help="Observed calendar span in OWID clean table.")
-k2.metric("Latest coverage", f"{latest:.1f}%", delta=f"{delta:+.1f} pp vs first year", delta_color="normal")
-k3.metric("First year in series", f"{earliest:.1f}%")
-k4.metric("Observations (years)", f"{n_obs:,}", help="GiveWell-style audit: count of annual data points.")
+# --- Top KPI row (executive cards) ---
+kpi_top = (
+    '<div class="wv-kpi-row">'
+    + _kpi_card_html(
+        "Years covered",
+        f"{yr_min}–{yr_max}",
+        "Calendar span in OWID clean series",
+        COL_NEUTRAL,
+    )
+    + _kpi_card_html(
+        "Latest coverage",
+        f"{latest:.1f}%",
+        f"<strong>{delta:+.1f} pp</strong> vs first year in series",
+        COL_WIN if delta > 0 else (COL_CAUTION if delta < 0 else COL_NEUTRAL),
+    )
+    + _kpi_card_html(
+        "First year in series",
+        f"{earliest:.1f}%",
+        "Baseline observation in this extract",
+        COL_BEFORE,
+    )
+    + _kpi_card_html(
+        "Annual observations",
+        f"{n_obs:,}",
+        "Audit trail: count of year rows used in charts",
+        COL_AFTER,
+    )
+    + "</div>"
+)
+st.markdown(kpi_top, unsafe_allow_html=True)
 
 st.info(
-    "**Transparency:** Use **Download CSV** under each table or chart to replicate numbers offline."
+    "Transparency: use **Download CSV** under each chart or table to replicate numbers offline."
 )
 
 st.divider()
@@ -220,11 +287,20 @@ fig.add_vline(
     annotation_text=f"Reference {campaign_start}",
     annotation_position="bottom right",
 )
+_axis_bold = dict(tickangle=0, tickfont=dict(size=13, color="#253858", family="Inter, Segoe UI, sans-serif"))
 fig.update_layout(
     title="Coverage over time",
     xaxis_title="Year",
     yaxis_title="Coverage (%)",
-    yaxis=dict(range=[0, 100]),
+    xaxis=dict(
+        title=dict(font=dict(size=14, color="#253858", family="Inter, Segoe UI, sans-serif")),
+        **_axis_bold,
+    ),
+    yaxis=dict(
+        range=[0, 100],
+        title=dict(font=dict(size=14, color="#253858", family="Inter, Segoe UI, sans-serif")),
+        tickfont=dict(size=12, color="#334155", family="Inter, Segoe UI, sans-serif"),
+    ),
     hovermode="x unified",
     template="plotly_white",
     height=480,
@@ -252,26 +328,64 @@ if len(before_vals) > 1 and len(after_vals) > 1:
     diff = avg_after - avg_before
     ci_before = mean_ci(before_vals)
     ci_after = mean_ci(after_vals)
+    sig = p_val < 0.05
+    lift_positive = diff > 0
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Mean before", f"{avg_before:.1f}%", help=f"95% CI: [{ci_before[0]:.1f}%, {ci_before[1]:.1f}%]")
-    m2.metric("Mean after", f"{avg_after:.1f}%", help=f"95% CI: [{ci_after[0]:.1f}%, {ci_after[1]:.1f}%]")
-    m3.metric("Difference (after − before)", f"{diff:+.1f} pp", delta=f"p = {p_val:.4f}")
-    m4.metric("t-statistic", f"{t_stat:.3f}")
+    if sig and lift_positive:
+        narrative_accent = COL_WIN
+        bar_colors = [COL_BEFORE, COL_WIN]
+    elif sig and not lift_positive:
+        narrative_accent = COL_CAUTION
+        bar_colors = [COL_WIN, COL_CAUTION]
+    else:
+        narrative_accent = COL_NEUTRAL
+        bar_colors = [COL_BEFORE, COL_AFTER]
 
-    if p_val < 0.05:
+    win_row = (
+        '<div class="wv-kpi-row">'
+        + _kpi_card_html(
+            "Mean · before window",
+            f"{avg_before:.1f}%",
+            f"95% CI: {ci_before[0]:.1f}% – {ci_before[1]:.1f}%",
+            bar_colors[0],
+        )
+        + _kpi_card_html(
+            "Mean · after window",
+            f"{avg_after:.1f}%",
+            f"95% CI: {ci_after[0]:.1f}% – {ci_after[1]:.1f}%",
+            bar_colors[1],
+        )
+        + _kpi_card_html(
+            "Difference (after − before)",
+            f"{diff:+.1f} pp",
+            f"Welch two-sample t-test · p = {p_val:.4f}",
+            narrative_accent,
+        )
+        + _kpi_card_html(
+            "t-statistic",
+            f"{t_stat:.3f}",
+            "Effect direction follows sign of difference",
+            COL_NEUTRAL,
+        )
+        + "</div>"
+    )
+    st.markdown(win_row, unsafe_allow_html=True)
+
+    if sig:
         st.success(
-            "**Signal:** At α = 0.05, mean coverage differs between windows. "
-            "Causality still requires domain review (program intensity, demographics, data gaps)."
+            "**STATISTICALLY SIGNIFICANT** — Mean coverage differs between the **before** and **after** "
+            f"windows at α = 0.05 (p = {p_val:.4f}). Interpretation still requires domain context "
+            "(program scale, demographics, reporting changes)."
         )
     else:
-        st.warning(
-            "**No strong evidence** of a mean shift at α = 0.05. Consider widening windows or checking coverage volatility."
+        st.error(
+            "**NOT STATISTICALLY SIGNIFICANT** — Mean shift is **inconclusive** at α = 0.05 "
+            f"(p = {p_val:.4f}). **Recommendation:** widen windows, check data quality, or gather more years."
         )
 
     avg_df = pd.DataFrame(
         {
-            "Period": ["Before window", "After window"],
+            "Period": ["Before", "After"],
             "Average (%)": [avg_before, avg_after],
             "ci_low": [ci_before[0], ci_after[0]],
             "ci_high": [ci_before[1], ci_after[1]],
@@ -282,8 +396,9 @@ if len(before_vals) > 1 and len(after_vals) > 1:
         go.Bar(
             x=avg_df["Period"],
             y=avg_df["Average (%)"],
-            marker_color=["#93c5fd", "#86efac"],
+            marker_color=bar_colors,
             text=[f"{avg_before:.1f}%", f"{avg_after:.1f}%"],
+            textfont=dict(size=14, color="#253858", family="Inter, Segoe UI, sans-serif"),
             textposition="outside",
             error_y=dict(
                 type="data",
@@ -291,20 +406,73 @@ if len(before_vals) > 1 and len(after_vals) > 1:
                 array=[ci_before[1] - avg_before, ci_after[1] - avg_after],
                 arrayminus=[avg_before - ci_before[0], avg_after - ci_after[0]],
                 visible=True,
-                thickness=2,
+                thickness=2.5,
                 color="#253858",
             ),
             name="Mean %",
         )
     )
     bar_fig.update_layout(
-        title="Mean coverage by window with 95% CI error bars",
-        yaxis=dict(range=[0, 100]),
+        title="Mean coverage by window — 95% confidence intervals",
+        yaxis=dict(range=[0, 100], title=dict(font=dict(size=14, color="#253858")), tickfont=dict(size=12, color="#334155")),
+        xaxis=dict(
+            title=dict(text="Window", font=dict(size=14, color="#253858")),
+            tickangle=0,
+            tickfont=dict(size=15, color="#253858", family="Inter, Segoe UI, sans-serif"),
+            categoryorder="array",
+            categoryarray=["Before", "After"],
+        ),
         template="plotly_white",
-        height=400,
+        height=420,
         showlegend=False,
     )
     st.plotly_chart(bar_fig, use_container_width=True)
+
+    chip_b, chip_a = bar_colors[0], bar_colors[1]
+    if sig and lift_positive:
+        insight_lead = (
+            f"After <strong>{campaign_start}</strong>, mean coverage runs about <strong>{diff:+.1f} pp</strong> "
+            f"higher than the pre-window average — a statistically discernible shift for <strong>{country}</strong>."
+        )
+        insight_body = (
+            "Use this as a <strong>monitoring signal</strong>, not proof of causality. Next: validate with "
+            "program milestones, denominator changes, and subnational slices; export CSVs for audit."
+        )
+    elif sig and not lift_positive:
+        insight_lead = (
+            f"Mean coverage in the <strong>after</strong> window is <strong>{abs(diff):.1f} pp</strong> "
+            f"below the <strong>before</strong> window — statistically significant at α = 0.05."
+        )
+        insight_body = (
+            "Investigate whether this reflects policy pullback, stock-outs, survey changes, or demographic shifts. "
+            "Pair with external program data before concluding program failure."
+        )
+    else:
+        insight_lead = (
+            "The two windows <strong>do not separate</strong> clearly at α = 0.05 — treat the apparent gap "
+            f"({diff:+.1f} pp) as <strong>noise-level</strong> until you add power or tighten hypotheses."
+        )
+        insight_body = (
+            "Next: widen or shift the reference year, confirm <strong>n per window</strong>, and document "
+            "assumptions for stakeholders who need a clear go / no-go."
+        )
+
+    st.markdown(
+        f"""
+<div class="wv-insight-box" style="border-left-color:{narrative_accent};">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+    <span style="font-weight:800;font-size:1rem;color:{chip_b};letter-spacing:0.04em;">BEFORE</span>
+    <span style="color:#cbd5e1;font-weight:600;">·</span>
+    <span style="font-weight:800;font-size:1rem;color:{chip_a};letter-spacing:0.04em;">AFTER</span>
+  </div>
+  <div class="wv-insight-kicker" style="color:{narrative_accent};">Executive insight</div>
+  <div class="wv-insight-lead">{insight_lead}</div>
+  <div class="wv-insight-body">{insight_body}</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
     st.download_button(
         "Download window means CSV",
         data=avg_df.to_csv(index=False).encode("utf-8"),
