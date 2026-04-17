@@ -9,9 +9,10 @@
 Vaccination coverage is one of the most important indicators for monitoring public health and child survival globally. UNICEF and WHO collect data to assess how immunization programs are performing across countries. To make this data accessible and actionable, we built an **ETL pipeline + interactive dashboard** that automates data updates and enables dynamic exploration.
 
 ## 🛑 Problem Statement
-- Immunization data is often scattered and updated periodically.  
-- Analysts and decision-makers need a **single source of truth** that stays up to date.  
-- Manual refreshing of datasets introduces delays and errors.  
+- Fragmented immunization data across global health sources leads to significant decision latency and methodological inconsistency in public health interventions.
+- Analysts require a production-grade single source of truth that eliminates manual error and provides high-integrity data for longitudinal analysis.
+- This project establishes an automated infrastructure to bridge the gap between raw global datasets and actionable strategic insights.
+- Manual refreshing of datasets introduces delays and errors.
 
 ## 🎯 Objectives
 1. Automate the **extraction, cleaning, and loading** of vaccination coverage data.  
@@ -23,7 +24,28 @@ Vaccination coverage is one of the most important indicators for monitoring publ
 1. **ETL Pipeline (`etl_pipeline.py`)**  
    - Extracts vaccination coverage data from [Our World in Data (OWID)](https://ourworldindata.org/).  
    - Cleans and transforms data (filters by antigen and country).  
-   - Loads cleaned results into `vaccination.db`.  
+   - Loads cleaned results into `vaccination.db`.
+   - This system is designed as a decoupled, scalable ETL engine;
+   - While currently utilizing SQLite for lightweight portability and local reproducibility;
+   - The logic is architected for seamless migration to enterprise cloud warehouses like Snowflake or BigQuery.
+
+graph TD
+    A[Our World in Data API], [Our World in Data (OWID)](https://ourworldindata.org/).-->|Automated Extraction| B(Python ETL Engine)
+    B -->|Validation & Quality Gates| C{Data Integrity Check}
+    C -->|Pass| D[(Unified Analytical Database)]
+    D -->|Query Engine| E[Streamlit Decision Interface]
+    F[GitHub Actions CI/CD] -->|Scheduled Trigger| B
+    F -->|CI/CD Artifacts| G[Versioned CSVs & Model Plots]
+
+    Methodological Rigor & Data Integrity
+        - Data Quality Gates: 
+        Implemented automated validation scripts to handle missing antigens and country-level outliers, ensuring the downstream reliability of visualizations.
+
+        - Reproducible Science: 
+        By leveraging CI/CD via GitHub Actions, every dataset refresh is versioned as a GitHub Artifact, creating a transparent audit trail for public health reporting.
+
+        - Longitudinal Consistency: 
+        The pipeline enforces strict schema validation to maintain historical accuracy across weekly data increments.
 
 2. **Dashboard (`streamlit_app.py`)**  
    - Reads data directly from `vaccination.db`.  
