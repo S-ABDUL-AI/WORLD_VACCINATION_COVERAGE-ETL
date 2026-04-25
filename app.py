@@ -1,2 +1,4 @@
-from streamlit_app import *  # noqa: F401,F403
+from global_vaccination_coverage_explorer_app import run
+
+run()
 

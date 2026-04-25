@@ -1,8 +1,12 @@
-streamlit>=1.43.0,<2
+streamlit
 pandas
-matplotlib
-scipy
+numpy
 plotly
+reportlab
+pypdf
+matplotlib
+scikit-learn
+scipy
 requests
 pycountry
 
